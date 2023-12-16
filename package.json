@@ -14,10 +14,57 @@
   "contributes": {
     "commands": [
       {
-        "command": "simple-command-launcher.helloWorld",
-        "title": "Hello World"
+        "command": "simple-command-launcher.runCommand",
+        "category": "Simple Command Launcher",
+        "title": "Run"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Simple Command Launcher: run external command",
+      "properties": {
+        "simple-command-launcher.externalCommands": {
+          "type": "array",
+          "title": "External Commands",
+          "items": {
+            "type": "object",
+            "title": "External Command",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of Command"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path of Command"
+              },
+              "args": {
+                "type": "array",
+                "title": "args",
+                "items": {
+                  "type": "object",
+                  "title": "arg",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Name of Arg"
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "Value of Arg"
+                    },
+                    "useInput": {
+                      "type": "boolean",
+                      "description": "whether to use user input",
+                      "default": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
