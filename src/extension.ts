@@ -121,16 +121,19 @@ async function runCommand() {
   const commandLine = `${selectedCmd.path} ${args.join(" ")}`;
   execFile(selectedCmd.path, args, { shell: true }, (err, stdout, stderr) => {
     if (err) {
+      vscode.window.showErrorMessage(
+        `コマンド実行失敗: ${err.message}\n${commandLine}`
+      );
       commandOutputChannel.append(err.message);
       if (stderr) {
         commandOutputChannel.append(stderr);
       }
+    } else {
+      // 実行結果出力
+      vscode.window.showInformationMessage(`コマンド実行成功: ${commandLine}`);
     }
     if (stdout) {
       commandOutputChannel.append(stdout);
     }
   });
-
-  // 実行結果出力
-  vscode.window.showInformationMessage(`コマンドを実行: ${commandLine}`);
 }
