@@ -94,6 +94,9 @@ async function runCommand() {
   }
 
   const selectedCmd = commandMap.get(selectedName) as Command;
+  if (!selectedCmd.args) {
+    selectedCmd.args = [];
+  }
   // コマンドの引数を取得
   const args = [];
   for (let i = 0; i < selectedCmd.args.length; i++) {
