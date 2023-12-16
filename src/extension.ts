@@ -61,7 +61,15 @@ export function deactivate() {
 async function runCommand() {
   // 設定情報取得
   const config = vscode.workspace.getConfiguration("simple-command-launcher");
-  const commandList = config.get("externalCommands") as Command[];
+  const commandList = config.get<Command[]>("externalCommands");
+
+  if (!commandList || commandList.length === 0) {
+    vscode.window.showErrorMessage(
+      "設定で`externalCommands`にコマンドを追加してください。"
+    );
+    return;
+  }
+
   // console.log(commandList);
   const commandMap = commandList.reduce(
     (map: Map<string, Command>, cmd: Command) => {
