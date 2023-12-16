@@ -54,8 +54,7 @@
                     },
                     "useInput": {
                       "type": "boolean",
-                      "description": "whether to use user input",
-                      "default": false
+                      "description": "whether to use user input"
                     }
                   }
                 }
