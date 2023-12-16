@@ -1,4 +1,4 @@
-# simple-command-launcher README
+# simple-command-launcher
 
 設定情報に登録したシェルスクリプトなどの外部コマンドを実行するためのvscode拡張機能
 
@@ -28,6 +28,7 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 今回は、例として`echo`コマンドを外部コマンドに登録しましょう。
 
 ```json
+// ..略..
 "simple-command-launcher.externalCommands": [
     {
       "name": "echo", // quick pickに表示される項目名
@@ -43,6 +44,7 @@ code --install-extension simple-command-launcher-x.x.x.vsix
       ]
     }
   ]
+// ..略..
 ```
 
 外部コマンドの設定方法の詳細は、[Extension Settings](#extension-settings)を参照してください。
@@ -59,12 +61,8 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 ## Features
 
 - **設定情報**に複数の外部コマンドを登録可能
-- 登録したコマンドをvscodeのコマンドとして呼び出し可能に
-  - **run-command**を呼び出すと、登録した外部コマンドの名前の一覧が表示される
-  - 実行するコマンドを選択すると
-    - 追加の引数が必要な場合は、引数の入力を求められる
-    - 入力が完了するとコマンドが実行される
-- コマンドの実行結果は`出力`-`Simple Command Launcher`に出力する
+- 登録したコマンドをvscodeのコマンドとして呼び出し可能
+- コマンドの実行結果は`出力`-`Simple Command Launcher`に出力
 
 ## Requirements
 
@@ -89,6 +87,58 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 | name           | 可       | `引数n`      | 引数名。省略時は、`引数n`となる。(nは引数の番号)                                                                                                                               |
 | value          | 不可     | -            | 引数の値                                                                                                                                                                       |
 | useInput       | 可       | false        | ユーザー入力の受付有無 。`true`の場合、ユーザー入力から引数を編集できる。その際、`value`の値が初期値として表示される。`false`の場合、`value`の値がそのまま引数として使用される |
+
+### 設定例
+
+```json
+// ..略..
+"simple-command-launcher.externalCommands": [
+    {
+      "name": "echo", // quick pickに表示される項目名
+      "path": "echo",
+      "args": [
+        {
+          "value": "hello" // 第1引数
+        },
+        {
+          "value": "world", // 第2引数
+          "useInput": true  // quick inputで修正可能
+        }
+      ]
+    },
+    {
+      "name": "blog start", // quick pickに表示される項目名
+      "path": "hugo_server.py",
+      "args": [
+        {
+          "value": "~/blog" // 第1引数
+        },
+        {
+          "name": "ポート番号",
+          "value": "1313", // 第2引数
+        }
+      ]
+    },
+    {
+      "name": "blog add til", // quick pickに表示される項目名
+      "path": "hugo_add_content.py",
+      "args": [
+        {
+          "value": "~/blog" // 第1引数
+        },
+        {
+          "value": "til", // 第2引数
+        },
+        {
+          "name": "ファイル名",
+          "value": "xxxx", // 第3引数
+          "useInput": true
+        }
+      ]
+    },
+  ]
+// ..略..
+```
 
 ## Release Notes
 
