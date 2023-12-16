@@ -1,71 +1,104 @@
 # simple-command-launcher README
 
-This is the README for your extension "simple-command-launcher". After writing up a brief description, we recommend including the following sections.
+設定情報に登録したシェルスクリプトなどの外部コマンドを実行するためのvscode拡張機能
+
+## インストール方法
+
+以下を実行してパッケージを作成してください。
+
+```shell
+npm install
+npm run package
+```
+
+`simple-command-launcher-x.x.x.vsix`というファイルが作成されるので、以下を実行して拡張機能をインストールしてください。[^1]
+
+```shell
+code --install-extension simple-command-launcher-x.x.x.vsix
+```
+
+## 使い方
+
+### 準備
+
+まず、`simple-command-launcher`の設定で`External Commands`に外部コマンドを追加する必要があります。
+
+外部コマンドの追加は、設定画面の`External Commands`で、`settings.json で編集`をクリックし、JSONファイルを編集して行います。
+
+今回は、例として`echo`コマンドを外部コマンドに登録しましょう。
+
+```json
+"simple-command-launcher.externalCommands": [
+    {
+      "name": "echo", // quick pickに表示される項目名
+      "path": "echo",
+      "args": [
+        {
+          "value": "hello" // 第1引数
+        },
+        {
+          "value": "world", // 第2引数
+          "useInput": true  // quick inputで修正可能
+        }
+      ]
+    }
+  ]
+```
+
+外部コマンドの設定方法の詳細は、[Extension Settings](#extension-settings)を参照してください。
+
+### コマンド実行
+
+実行手順は以下になります。
+
+1. コマンドパレットから`Simple Command Launcher: Run`を選択します。
+2. 登録済の外部コマンドの名前が一覧表示されるので、実行したい名前を選択します。
+3. (設定に応じて)コマンド引数のユーザー入力が求められます。必要に応じて引数を編集してEnterを押します。
+4. 全ての引数の入力が終われば外部コマンドが実行されます。
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **設定情報**に複数の外部コマンドを登録可能
+- 登録したコマンドをvscodeのコマンドとして呼び出し可能に
+  - **run-command**を呼び出すと、登録した外部コマンドの名前の一覧が表示される
+  - 実行するコマンドを選択すると
+    - 追加の引数が必要な場合は、引数の入力を求められる
+    - 入力が完了するとコマンドが実行される
+- コマンドの実行結果は`出力`-`Simple Command Launcher`に出力する
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- [@vscode/vsce](https://github.com/microsoft/vscode-vsce)
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+`simple-command-launcher.externalCommands`には、**コマンド情報**を配列として設定できます。
 
-For example:
+**コマンド情報**に設定できる内容は以下になります。
 
-This extension contributes the following settings:
+| コマンド情報の項目 | 省略可否 | デフォルト値 | 説明                                                                              |
+| ------------------ | -------- | ------------ | --------------------------------------------------------------------------------- |
+| name               | 不可     | -            | 外部コマンド名。 `Simple Command Launcher`の`Run`コマンド実行時の選択項目になる。 |
+| path               | 不可     | -            | 外部コマンドのパス。`/bin/sh`により実行されるコマンドのパス                       |
+| args               | 可       | []           | 外部コマンドに渡す**引数情報**の配列                                              |
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+**引数情報**に設定できる項目は以下になります。
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
+| 引数情報の項目 | 省略可否 | デフォルト値 | 説明                                                                                                                                                                           |
+| -------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name           | 可       | `引数n`      | 引数名。省略時は、`引数n`となる。(nは引数の番号)                                                                                                                               |
+| value          | 不可     | -            | 引数の値                                                                                                                                                                       |
+| useInput       | 可       | false        | ユーザー入力の受付有無 。`true`の場合、ユーザー入力から引数を編集できる。その際、`value`の値が初期値として表示される。`false`の場合、`value`の値がそのまま引数として使用される |
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+初回リリース。
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- 設定情報に登録された外部コマンドをvscodeのコマンドとして実行できる。
+- 外部コマンドの実行結果の標準出力or標準エラー出力が`出力`タブの`Simple Command Launcher`に表示される。
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+[^1]: [Install from a VSIX # Managing Extensions in Visual Studio Code](https://code.visualstudio.com/docs/editor/extension-marketplace#_install-from-a-vsix)
