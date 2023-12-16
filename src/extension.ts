@@ -10,7 +10,7 @@ type CmdArg = {
   useInput: boolean;
 };
 
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
@@ -116,7 +116,7 @@ async function runCommand() {
   }
   // コマンドを実行
   const commandLine = `${selectedCmd.path} ${args.join(" ")}`;
-  exec(commandLine, (err, stdout, stderr) => {
+  execFile(selectedCmd.path, args, { shell: true }, (err, stdout, stderr) => {
     if (err) {
       commandOutputChannel.append(err.message);
       if (stderr) {
