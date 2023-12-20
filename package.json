@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -60,6 +60,13 @@
                     "useInput": {
                       "type": "boolean",
                       "description": "whether to use user input"
+                    },
+                    "choices": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "title": "choices"
+                      }
                     }
                   }
                 }
