@@ -8,6 +8,7 @@ type CmdArg = {
   name?: string;
   value: string;
   useInput: boolean;
+  choices?: string[];
 };
 
 import { execFile } from "child_process";
@@ -103,16 +104,30 @@ async function runCommand() {
     const arg = selectedCmd.args[i];
     const argName = arg.name ? arg.name : `引数${i + 1}`;
     if (arg.useInput) {
-      const input = await vscode.window.showInputBox({
-        title: `${argName}`,
-        prompt: `${argName}を入力してください:`,
-        value: arg.value,
-      });
-      if (!input) {
-        vscode.window.showWarningMessage(`${arg.name}を入力してください`);
-        return;
+      if (arg.choices) {
+        const name = arg.name ?? "項目";
+        const selectedItem = await vscode.window.showQuickPick(arg.choices, {
+          canPickMany: false,
+          title: `${name}を選択してください`,
+        });
+
+        if (!selectedItem) {
+          vscode.window.showWarningMessage(`${name}を選択してください`);
+          return;
+        }
+        args.push(selectedItem);
+      } else {
+        const input = await vscode.window.showInputBox({
+          title: `${argName}`,
+          prompt: `${argName}を入力してください:`,
+          value: arg.value,
+        });
+        if (!input) {
+          vscode.window.showWarningMessage(`${arg.name}を入力してください`);
+          return;
+        }
+        args.push(input);
       }
-      args.push(input);
     } else {
       args.push(arg.value);
     }
