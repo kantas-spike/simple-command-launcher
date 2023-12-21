@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -64,8 +64,18 @@
                     "choices": {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "title": "choices"
+                        "type": "object",
+                        "title": "choice",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Name of Choice"
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "Value of Choice"
+                          }
+                        }
                       }
                     }
                   }

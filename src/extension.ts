@@ -8,7 +8,12 @@ type CmdArg = {
   name?: string;
   value: string;
   useInput: boolean;
-  choices?: string[];
+  choices?: Choice[];
+};
+
+type Choice = {
+  name?: string;
+  value: string;
 };
 
 import { execFile } from "child_process";
@@ -99,23 +104,42 @@ async function runCommand() {
     selectedCmd.args = [];
   }
   // コマンドの引数を取得
-  const args = [];
+  const args: string[] = [];
   for (let i = 0; i < selectedCmd.args.length; i++) {
     const arg = selectedCmd.args[i];
     const argName = arg.name ? arg.name : `引数${i + 1}`;
     if (arg.useInput) {
       if (arg.choices) {
+        const choiceMap = arg.choices.reduce(
+          (map: Map<string, string>, choice: Choice) => {
+            const key = choice.name ?? choice.value;
+            map.set(key, choice.value);
+            return map;
+          },
+          new Map<string, string>()
+        );
         const name = arg.name ?? "項目";
-        const selectedItem = await vscode.window.showQuickPick(arg.choices, {
-          canPickMany: false,
-          title: `${name}を選択してください`,
-        });
+        const selectedItem = await vscode.window.showQuickPick(
+          Array.from(choiceMap.keys()),
+          {
+            canPickMany: false,
+            title: `${name}を選択してください`,
+          }
+        );
 
         if (!selectedItem) {
           vscode.window.showWarningMessage(`${name}を選択してください`);
           return;
         }
-        args.push(selectedItem);
+        const value = choiceMap.get(selectedItem);
+        if (!value) {
+          vscode.window.showWarningMessage(
+            `不正な項目(${selectedItem})が選択されました。設定を確認してください`
+          );
+          return;
+        } else {
+          args.push(value);
+        }
       } else {
         const input = await vscode.window.showInputBox({
           title: `${argName}`,
