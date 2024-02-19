@@ -1,6 +1,9 @@
+type ExecutionType = "run" | "pickAndCode" | "pickAndOpen";
+
 type Command = {
   name: string;
   path: string;
+  executionType: ExecutionType;
   args: CmdArg[];
 };
 
@@ -16,6 +19,13 @@ type Choice = {
   value: string;
 };
 
+type PcikAndRunItem = {
+  command: string;
+  pickTitle: string;
+  errMessage: string;
+};
+
+import * as util from "node:util";
 import { execFile } from "child_process";
 
 // The module 'vscode' contains the VS Code extensibility API
@@ -68,6 +78,27 @@ async function runCommand() {
   // 設定情報取得
   const config = vscode.workspace.getConfiguration("simple-command-launcher");
   const commandList = config.get<Command[]>("externalCommands");
+  const openCommand = config.get<string>("openCommand");
+  const vscodeCommand = config.get<string>("vscodeCommand");
+
+  const pickAndXXMeta = new Map<"pickAndCode" | "pickAndOpen", PcikAndRunItem>([
+    [
+      "pickAndCode",
+      {
+        command: vscodeCommand ?? "code",
+        pickTitle: "vscodeで開く",
+        errMessage: "vscodeで開く項目を選択してください",
+      },
+    ],
+    [
+      "pickAndOpen",
+      {
+        command: openCommand ?? "open",
+        pickTitle: "openで開く",
+        errMessage: "openで開く項目を選択してください",
+      },
+    ],
+  ]);
 
   if (!commandList || commandList.length === 0) {
     vscode.window.showErrorMessage(
@@ -158,21 +189,79 @@ async function runCommand() {
   }
   // コマンドを実行
   const commandLine = `${selectedCmd.path} ${args.join(" ")}`;
-  execFile(selectedCmd.path, args, { shell: true }, (err, stdout, stderr) => {
-    if (err) {
-      vscode.window.showErrorMessage(
-        `コマンド実行失敗: ${err.message}\n${commandLine}`
-      );
-      commandOutputChannel.append(err.message);
+  const asyncExecFile = util.promisify(execFile);
+  const execCommand = async () => {
+    try {
+      commandOutputChannel.append(commandLine);
+      const { stdout, stderr } = await asyncExecFile(selectedCmd.path, args, {
+        shell: true,
+      });
+      // 実行結果出力
+      vscode.window.showInformationMessage(`コマンド実行成功: ${commandLine}`);
+      if (stdout) {
+        commandOutputChannel.append(stdout);
+
+        if (
+          selectedCmd.executionType === "pickAndCode" ||
+          selectedCmd.executionType === "pickAndOpen"
+        ) {
+          const item = pickAndXXMeta.get(selectedCmd.executionType);
+
+          if (item === undefined) {
+            throw Error(
+              `不正なexecutionTypeが指定されました: ${selectedCmd.executionType}`
+            );
+          }
+
+          const lines = stdout
+            .split(/\r?\n/)
+            .filter((line) => line.trim().length > 0);
+          const selectedValue = await vscode.window.showQuickPick(lines, {
+            canPickMany: false,
+            title: item.pickTitle,
+          });
+
+          if (!selectedValue) {
+            vscode.window.showWarningMessage(item.errMessage);
+            commandOutputChannel.append(item.errMessage);
+            return;
+          } else {
+            execFile(
+              item.command,
+              [selectedValue],
+              {
+                shell: true,
+              },
+              (err, stdout, stderr) => {
+                const extraCmdLine = `${item.command} ${selectedValue}`;
+                commandOutputChannel.append(extraCmdLine);
+                if (err) {
+                  vscode.window.showInformationMessage(
+                    `コマンド実行失敗: ${extraCmdLine}`
+                  );
+                } else {
+                  vscode.window.showInformationMessage(
+                    `コマンド実行成功:  ${extraCmdLine}`
+                  );
+                }
+              }
+            );
+          }
+        }
+      }
       if (stderr) {
         commandOutputChannel.append(stderr);
       }
-    } else {
-      // 実行結果出力
-      vscode.window.showInformationMessage(`コマンド実行成功: ${commandLine}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        vscode.window.showErrorMessage(
+          `コマンド実行失敗: ${err.message}\n${commandLine}`
+        );
+        commandOutputChannel.append(err.message);
+      } else {
+        commandOutputChannel.append(`不明なエラー発生: ${err}`);
+      }
     }
-    if (stdout) {
-      commandOutputChannel.append(stdout);
-    }
-  });
+  };
+  execCommand();
 }

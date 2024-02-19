@@ -74,11 +74,12 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 
 **コマンド情報**に設定できる内容は以下になります。
 
-| コマンド情報の項目 | 省略可否 | デフォルト値 | 説明                                                                              |
-| ------------------ | -------- | ------------ | --------------------------------------------------------------------------------- |
-| name               | 不可     | -            | 外部コマンド名。 `Simple Command Launcher`の`Run`コマンド実行時の選択項目になる。 |
-| path               | 不可     | -            | 外部コマンドのパス。`/bin/sh`により実行されるコマンドのパス                       |
-| args               | 可       | []           | 外部コマンドに渡す**引数情報**の配列                                              |
+| コマンド情報の項目 | 省略可否 | デフォルト値 | 説明                                                                                                                                                                                           |
+| ------------------ | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name               | 不可     | -            | 外部コマンド名。 `Simple Command Launcher`の`Run`コマンド実行時の選択項目になる。                                                                                                              |
+| path               | 不可     | -            | 外部コマンドのパス。`/bin/sh`により実行されるコマンドのパス                                                                                                                                    |
+| executionType      | 可       | run          | `run`(外部コマンドを実行), `pickAndCode`(外部コマンドの実行結果をQuickPickで選択し、VsCodeで開く), `pickAndOpen`(外部コマンドの実行結果をQuickPickで選択し、Openで開く) のいずれかを選択可能。 |
+| args               | 可       | []           | 外部コマンドに渡す**引数情報**の配列                                                                                                                                                           |
 
 **引数情報**に設定できる項目は以下になります。
 
@@ -95,6 +96,10 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 | ----- | -------- | ------ | ------------ | -------------------------------------------------- |
 | name  | 可       | string | undefined    | 選択肢の名前。省略時は`value`の値が採用される      |
 | value | 不可     | string | -            | 選択肢の値。実際のコマンドの引数として使用される値 |
+
+`simple-command-launcher.openCommand`には、**open**コマンドのパスを指定します。デフォルト値は`/usr/bin/open`です。
+
+`simple-command-launcher.vscodeCommand`には、**code**コマンドのパスを指定します。デフォルト値は`/usr/local/bin/code`です。
 
 ### 設定例
 
@@ -157,6 +162,12 @@ code --install-extension simple-command-launcher-x.x.x.vsix
         }
       ]
     },
+    {
+      "name": "open project",
+      "path": "/bin/ls",
+      "executionType": "pickAndCode", // コマンドの実行結果をQuickPickで選択し、vscodeで開く
+      "args": [{ "value": "-dr" }, { "value": "~/hacking/spike/*" }]
+    }
   ]
 // ..略..
 ```
@@ -169,6 +180,18 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 
 - 設定情報に登録された外部コマンドをvscodeのコマンドとして実行できる。
 - 外部コマンドの実行結果の標準出力or標準エラー出力が`出力`タブの`Simple Command Launcher`に表示される。
+
+### 0.0.2
+
+- コマンドの引数に選択肢(`choices`)を選択可能に
+
+### 0.0.3
+
+- コマンドの引数に選択肢(`choices`)の型を`string`から`{ name?: string, value: string}`に変更
+
+### 0.0.4
+
+- `External Commands`に`executionType`を追加し、コマンドの実行結果をQuickPickで選択し、`code`や`open`で開けるように変更
 
 ---
 

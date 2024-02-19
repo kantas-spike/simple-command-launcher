@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -27,6 +27,16 @@
     "configuration": {
       "title": "Simple Command Launcher: run external command",
       "properties": {
+        "simple-command-launcher.openCommand": {
+          "type": "string",
+          "title": "path of open command",
+          "default": "/usr/bin/open"
+        },
+        "simple-command-launcher.vscodeCommand": {
+          "type": "string",
+          "title": "path of vscode command",
+          "default": "/usr/local/bin/code"
+        },
         "simple-command-launcher.externalCommands": {
           "type": "array",
           "title": "External Commands",
@@ -41,6 +51,21 @@
               "path": {
                 "type": "string",
                 "description": "Path of Command"
+              },
+              "executionType": {
+                "type": "string",
+                "description": "Type of Command",
+                "default": "run",
+                "enum": [
+                  "run",
+                  "pickAndCode",
+                  "pickAndOpen"
+                ],
+                "enumDescriptions": [
+                  "just run the command",
+                  "select the command result and open it with `code`",
+                  "select the command result and open it with `open`"
+                ]
               },
               "args": {
                 "type": "array",
