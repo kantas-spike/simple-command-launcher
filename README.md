@@ -193,6 +193,10 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 
 - `External Commands`に`executionType`を追加し、コマンドの実行結果をQuickPickで選択し、`code`や`open`で開けるように変更
 
+### 0.0.5
+
+- バグ修正: quickPickで取得した値に空白があるとコマンド実行エラーになる。取得値をダブルクォートで囲むように修正。
+
 ---
 
 [^1]: [Install from a VSIX # Managing Extensions in Visual Studio Code](https://code.visualstudio.com/docs/editor/extension-marketplace#_install-from-a-vsix)

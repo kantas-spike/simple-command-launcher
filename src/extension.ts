@@ -74,6 +74,10 @@ export function deactivate() {
   }
 }
 
+function escapeQuote(input: string, quote = '"') {
+  return input.replaceAll(quote, `\\${quote}`);
+}
+
 async function runCommand() {
   // 設定情報取得
   const config = vscode.workspace.getConfiguration("simple-command-launcher");
@@ -181,7 +185,7 @@ async function runCommand() {
           vscode.window.showWarningMessage(`${arg.name}を入力してください`);
           return;
         }
-        args.push(input);
+        args.push(`"${escapeQuote(input)}"`);
       }
     } else {
       args.push(arg.value);
@@ -228,7 +232,7 @@ async function runCommand() {
           } else {
             execFile(
               item.command,
-              [selectedValue],
+              [`"${escapeQuote(selectedValue)}"`],
               {
                 shell: true,
               },
