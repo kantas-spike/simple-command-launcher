@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -59,12 +59,14 @@
                 "enum": [
                   "run",
                   "pickAndCode",
-                  "pickAndOpen"
+                  "pickAndOpen",
+                  "inputsForTasks"
                 ],
                 "enumDescriptions": [
                   "just run the command",
                   "select the command result and open it with `code`",
-                  "select the command result and open it with `open`"
+                  "select the command result and open it with `open`",
+                  "select the command result (STDOUT) and return it as `inputs` of tasks.json"
                 ]
               },
               "args": {

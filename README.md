@@ -58,11 +58,67 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 3. (設定に応じて)コマンド引数のユーザー入力が求められます。必要に応じて引数を編集してEnterを押します。
 4. 全ての引数の入力が終われば外部コマンドが実行されます。
 
+### tasks.jsonの`inputs`として利用する
+
+vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-command-launcher.runCommand`を呼び出すことができます。
+引数に外部コマンド名(`name`)を指定した場合は、コマンド一覧からの選択(quickPick)を省略して、そのコマンドが選択された状態で以降の処理を行います。
+
+`executionType`に`inputsForTasks`を設定した外部コマンドでは、実行結果(`STDOUT`)の各行がQuickPickの選択肢として表示され、選択した値が`inputs`の値(変数)としてタスクに渡されます。
+
+```json
+// .vscode/tasks.json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "deploy",
+      "type": "shell",
+      "command": "echo deploying to ${input:target}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "target",
+      "type": "command",
+      "command": "simple-command-launcher.runCommand",
+      "args": {
+        "name": "list name" // simple-command-launcherの設定で登録した外部コマンド名
+      }
+    }
+  ]
+}
+```
+
+対応する`externalCommands`の設定は以下になります。
+
+```json
+// ..略..
+"simple-command-launcher.externalCommands": [
+    {
+      "name": "list name", // tasks.jsonのargs.nameに指定する名前
+      "path": "/bin/ls",
+      "executionType": "inputsForTasks", // 実行結果(STDOUT)をinputsに返す
+      "args": [{ "value": "-dr" }, { "value": "~/hacking/spike/*" }]
+    }
+  ]
+// ..略..
+```
+
+`args`の挙動は以下になります。
+
+- `name`を省略した場合は、コマンドパレットから実行した場合と同じく、コマンド一覧を選択するquickPickが表示されます。
+- `args`に配列を指定した場合は、先頭の要素が外部コマンド名として扱われます(`"args": ["list name"]`)。
+- 指定した`name`が設定の`externalCommands`に存在しない場合は、警告を表示して処理を終了します。
+- 選択をキャンセルした場合や外部コマンドの実行に失敗した場合は値を返さないため、タスクは実行されません。
+
 ## Features
 
 - **設定情報**に複数の外部コマンドを登録可能
 - 登録したコマンドをvscodeのコマンドとして呼び出し可能
 - コマンドの実行結果は`出力`-`Simple Command Launcher`に出力
+- `runCommand`コマンドに外部コマンド名を渡すと、コマンド一覧の選択を省略できる
+- 外部コマンドの実行結果(`STDOUT`)を`tasks.json`の`inputs`(変数)として利用できる
 
 ## Requirements
 
@@ -78,7 +134,7 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 | ------------------ | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | name               | 不可     | -            | 外部コマンド名。 `Simple Command Launcher`の`Run`コマンド実行時の選択項目になる。                                                                                                              |
 | path               | 不可     | -            | 外部コマンドのパス。`/bin/sh`により実行されるコマンドのパス                                                                                                                                    |
-| executionType      | 可       | run          | `run`(外部コマンドを実行), `pickAndCode`(外部コマンドの実行結果をQuickPickで選択し、VsCodeで開く), `pickAndOpen`(外部コマンドの実行結果をQuickPickで選択し、Openで開く) のいずれかを選択可能。 |
+| executionType      | 可       | run          | `run`(外部コマンドを実行), `pickAndCode`(外部コマンドの実行結果をQuickPickで選択し、VsCodeで開く), `pickAndOpen`(外部コマンドの実行結果をQuickPickで選択し、Openで開く), `inputsForTasks`(外部コマンドの実行結果をQuickPickで選択し、`tasks.json`の`inputs`に値を渡す) のいずれかを選択可能。 |
 | args               | 可       | []           | 外部コマンドに渡す**引数情報**の配列                                                                                                                                                           |
 
 **引数情報**に設定できる項目は以下になります。
@@ -196,6 +252,11 @@ code --install-extension simple-command-launcher-x.x.x.vsix
 ### 0.0.5
 
 - バグ修正: quickPickで取得した値に空白があるとコマンド実行エラーになる。取得値をダブルクォートで囲むように修正。
+
+### 0.0.6
+
+- `runCommand`コマンドの引数に外部コマンド名(`name`)を指定可能に。指定時はコマンド一覧の選択を省略する。
+- `executionType`に`inputsForTasks`を追加し、外部コマンドの実行結果(`STDOUT`)の各行をQuickPickで選択して、`tasks.json`の`inputs`の値として利用可能に。
 
 ---
 

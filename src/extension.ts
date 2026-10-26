@@ -1,4 +1,4 @@
-type ExecutionType = "run" | "pickAndCode" | "pickAndOpen";
+type ExecutionType = "run" | "pickAndCode" | "pickAndOpen" | "inputsForTasks";
 
 type Command = {
   name: string;
@@ -17,6 +17,11 @@ type CmdArg = {
 type Choice = {
   name?: string;
   value: string;
+};
+
+// simple-command-launcher.runCommandコマンドに渡す引数
+type RunCommandArgs = {
+  name?: string;
 };
 
 type PcikAndRunItem = {
@@ -56,11 +61,10 @@ export function activate(context: vscode.ExtensionContext) {
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
+  // tasks.jsonのinputs(`type: command`)からも呼び出せるため、戻り値をそのまま返却する
   let disposable = vscode.commands.registerCommand(
     "simple-command-launcher.runCommand",
-    () => {
-      runCommand();
-    }
+    async (nameOrArgs?: string | RunCommandArgs) => runCommand(nameOrArgs)
   );
 
   context.subscriptions.push(disposable);
@@ -78,7 +82,9 @@ function escapeQuote(input: string, quote = '"') {
   return input.replaceAll(quote, `\\${quote}`);
 }
 
-async function runCommand() {
+async function runCommand(
+  nameOrArgs?: string | RunCommandArgs
+): Promise<string | undefined> {
   // 設定情報取得
   const config = vscode.workspace.getConfiguration("simple-command-launcher");
   const commandList = config.get<Command[]>("externalCommands");
@@ -108,7 +114,7 @@ async function runCommand() {
     vscode.window.showErrorMessage(
       "設定で`externalCommands`にコマンドを追加してください。"
     );
-    return;
+    return undefined;
   }
 
   // console.log(commandList);
@@ -119,8 +125,41 @@ async function runCommand() {
     new Map<string, Command>()
   );
 
+  // 外部コマンド名が指定された場合はquickPickでの選択を省略して以降の処理を行う
+  const requestedName =
+    typeof nameOrArgs === "string" ? nameOrArgs : nameOrArgs?.name;
+  const selectedName = await selectCommandName(commandMap, requestedName);
+  if (!selectedName) {
+    return undefined;
+  }
+
+  const selectedCmd = commandMap.get(selectedName) as Command;
+
+  // コマンドの引数を取得
+  const args = await collectArgs(selectedCmd);
+  if (!args) {
+    return undefined;
+  }
+
+  return executeCommand(selectedCmd, args, pickAndXXMeta);
+}
+
+// 実行する外部コマンドの名前を確定させる(未指定の場合はquickPickで選択させる)
+async function selectCommandName(
+  commandMap: Map<string, Command>,
+  requestedName?: string
+): Promise<string | undefined> {
+  if (requestedName) {
+    if (!commandMap.has(requestedName)) {
+      const message = `未登録のコマンド名が指定されました: ${requestedName}`;
+      vscode.window.showWarningMessage(message);
+      commandOutputChannel.append(message);
+      return undefined;
+    }
+    return requestedName;
+  }
+
   // quickPick表示
-  commandMap.keys();
   const selectedName = await vscode.window.showQuickPick(
     Array.from(commandMap.keys()),
     {
@@ -131,17 +170,19 @@ async function runCommand() {
 
   if (!selectedName) {
     vscode.window.showWarningMessage("コマンド名を選択してください");
-    return;
+    return undefined;
   }
+  return selectedName;
+}
 
-  const selectedCmd = commandMap.get(selectedName) as Command;
-  if (!selectedCmd.args) {
-    selectedCmd.args = [];
-  }
-  // コマンドの引数を取得
+// 外部コマンドに渡す引数を設定とユーザー入力から取得する(入力を中止した場合はundefined)
+async function collectArgs(
+  selectedCmd: Command
+): Promise<string[] | undefined> {
+  const cmdArgs = selectedCmd.args ?? [];
   const args: string[] = [];
-  for (let i = 0; i < selectedCmd.args.length; i++) {
-    const arg = selectedCmd.args[i];
+  for (let i = 0; i < cmdArgs.length; i++) {
+    const arg = cmdArgs[i];
     const argName = arg.name ? arg.name : `引数${i + 1}`;
     if (arg.useInput) {
       if (arg.choices) {
@@ -164,14 +205,14 @@ async function runCommand() {
 
         if (!selectedItem) {
           vscode.window.showWarningMessage(`${name}を選択してください`);
-          return;
+          return undefined;
         }
         const value = choiceMap.get(selectedItem);
         if (!value) {
           vscode.window.showWarningMessage(
             `不正な項目(${selectedItem})が選択されました。設定を確認してください`
           );
-          return;
+          return undefined;
         } else {
           args.push(value);
         }
@@ -183,7 +224,7 @@ async function runCommand() {
         });
         if (!input) {
           vscode.window.showWarningMessage(`${arg.name}を入力してください`);
-          return;
+          return undefined;
         }
         args.push(`"${escapeQuote(input)}"`);
       }
@@ -191,81 +232,133 @@ async function runCommand() {
       args.push(arg.value);
     }
   }
+  return args;
+}
+
+// 外部コマンドを実行し、executionTypeに応じて後続処理を行う
+// executionTypeが`inputsForTasks`の場合はtasks.jsonのinputsに渡す値を返却する
+async function executeCommand(
+  selectedCmd: Command,
+  args: string[],
+  pickAndXXMeta: Map<"pickAndCode" | "pickAndOpen", PcikAndRunItem>
+): Promise<string | undefined> {
   // コマンドを実行
   const commandLine = `${selectedCmd.path} ${args.join(" ")}`;
   const asyncExecFile = util.promisify(execFile);
-  const execCommand = async () => {
-    try {
-      commandOutputChannel.append(commandLine);
-      const { stdout, stderr } = await asyncExecFile(selectedCmd.path, args, {
-        shell: true,
-      });
-      // 実行結果出力
+  // tasks.jsonのinputsとして実行する場合は、成否のトースト表示を行わない
+  const silent = selectedCmd.executionType === "inputsForTasks";
+
+  try {
+    commandOutputChannel.append(commandLine);
+    const { stdout, stderr } = await asyncExecFile(selectedCmd.path, args, {
+      shell: true,
+    });
+    // 実行結果出力
+    if (!silent) {
       vscode.window.showInformationMessage(`コマンド実行成功: ${commandLine}`);
-      if (stdout) {
-        commandOutputChannel.append(stdout);
+    }
+    if (stdout) {
+      commandOutputChannel.append(stdout);
+    }
+    if (stderr) {
+      commandOutputChannel.append(stderr);
+    }
 
-        if (
-          selectedCmd.executionType === "pickAndCode" ||
-          selectedCmd.executionType === "pickAndOpen"
-        ) {
-          const item = pickAndXXMeta.get(selectedCmd.executionType);
-
-          if (item === undefined) {
-            throw Error(
-              `不正なexecutionTypeが指定されました: ${selectedCmd.executionType}`
-            );
-          }
-
-          const lines = stdout
-            .split(/\r?\n/)
-            .filter((line) => line.trim().length > 0);
-          const selectedValue = await vscode.window.showQuickPick(lines, {
-            canPickMany: false,
-            title: item.pickTitle,
-          });
-
-          if (!selectedValue) {
-            vscode.window.showWarningMessage(item.errMessage);
-            commandOutputChannel.append(item.errMessage);
-            return;
-          } else {
-            execFile(
-              item.command,
-              [`"${escapeQuote(selectedValue)}"`],
-              {
-                shell: true,
-              },
-              (err, stdout, stderr) => {
-                const extraCmdLine = `${item.command} ${selectedValue}`;
-                commandOutputChannel.append(extraCmdLine);
-                if (err) {
-                  vscode.window.showInformationMessage(
-                    `コマンド実行失敗: ${extraCmdLine}`
-                  );
-                } else {
-                  vscode.window.showInformationMessage(
-                    `コマンド実行成功:  ${extraCmdLine}`
-                  );
-                }
-              }
-            );
-          }
+    switch (selectedCmd.executionType) {
+      case "pickAndCode":
+      case "pickAndOpen":
+        if (stdout) {
+          await pickAndRun(selectedCmd.executionType, stdout, pickAndXXMeta);
         }
-      }
-      if (stderr) {
-        commandOutputChannel.append(stderr);
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        vscode.window.showErrorMessage(
-          `コマンド実行失敗: ${err.message}\n${commandLine}`
-        );
-        commandOutputChannel.append(err.message);
+        break;
+      case "inputsForTasks":
+        return await pickTaskInput(stdout);
+      default:
+        break;
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      vscode.window.showErrorMessage(
+        `コマンド実行失敗: ${err.message}\n${commandLine}`
+      );
+      commandOutputChannel.append(err.message);
+    } else {
+      commandOutputChannel.append(`不明なエラー発生: ${err}`);
+    }
+  }
+  return undefined;
+}
+
+// 外部コマンドの実行結果から項目を選択させ、codeやopenで開く
+async function pickAndRun(
+  executionType: "pickAndCode" | "pickAndOpen",
+  stdout: string,
+  pickAndXXMeta: Map<"pickAndCode" | "pickAndOpen", PcikAndRunItem>
+): Promise<void> {
+  const item = pickAndXXMeta.get(executionType);
+  if (item === undefined) {
+    throw Error(`不正なexecutionTypeが指定されました: ${executionType}`);
+  }
+
+  const lines = stdout
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0);
+  const selectedValue = await vscode.window.showQuickPick(lines, {
+    canPickMany: false,
+    title: item.pickTitle,
+  });
+
+  if (!selectedValue) {
+    vscode.window.showWarningMessage(item.errMessage);
+    commandOutputChannel.append(item.errMessage);
+    return;
+  }
+
+  execFile(
+    item.command,
+    [`"${escapeQuote(selectedValue)}"`],
+    {
+      shell: true,
+    },
+    (err, stdout) => {
+      const extraCmdLine = `${item.command} ${selectedValue}`;
+      commandOutputChannel.append(extraCmdLine);
+      if (err) {
+        vscode.window.showInformationMessage(`コマンド実行失敗: ${extraCmdLine}`);
       } else {
-        commandOutputChannel.append(`不明なエラー発生: ${err}`);
+        vscode.window.showInformationMessage(`コマンド実行成功:  ${extraCmdLine}`);
       }
     }
-  };
-  execCommand();
+  );
+}
+
+// 外部コマンドの実行結果(STDOUT)の各行をQuickPickItemとして選択させ、
+// tasks.jsonのinputsに渡す値として返却する
+async function pickTaskInput(stdout: string): Promise<string | undefined> {
+  const items = stdout
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map<vscode.QuickPickItem>((line) => ({ label: line }));
+
+  if (items.length === 0) {
+    const message =
+      "外部コマンドの実行結果(STDOUT)に選択できる項目がありません。";
+    vscode.window.showWarningMessage(message);
+    commandOutputChannel.append(message);
+    return undefined;
+  }
+
+  const selected = await vscode.window.showQuickPick(items, {
+    canPickMany: false,
+    title: "tasks.jsonのinputsに渡す値の選択",
+  });
+
+  if (!selected) {
+    const message = "inputsに渡す値を選択してください";
+    vscode.window.showWarningMessage(message);
+    commandOutputChannel.append(message);
+    return undefined;
+  }
+  commandOutputChannel.append(`inputsに渡す値: ${selected.label}`);
+  return selected.label;
 }
