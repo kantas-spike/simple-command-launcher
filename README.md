@@ -99,11 +99,38 @@ vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-co
       "name": "list name", // tasks.jsonのargs.nameに指定する名前
       "path": "/bin/ls",
       "executionType": "inputsForTasks", // 実行結果(STDOUT)をinputsに返す
+      "delimiter": "|", // 任意。省略時はsimple-command-launcher.defaultDelimiterの値を採用
       "args": [{ "value": "-dr" }, { "value": "~/hacking/spike/*" }]
     }
   ]
 // ..略..
 ```
+
+`executionType`に`inputsForTasks`を指定した場合、外部コマンドの実行結果(`STDOUT`)の各行は以下のフォーマットを利用できます。
+
+```text
+label|value
+```
+
+QuickPickには`label`が表示され(`value`は説明文として併記されます)、選択した項目の`value`が`inputs`の値(変数)としてタスクに渡されます。
+
+行を分割する区切り文字の既定値は`|`で、拡張機能共通の既定値は`simple-command-launcher.defaultDelimiter`で変更できます。また、コマンド情報に`delimiter`を指定すると、そのコマンドだけの区切り文字を優先できます(`delimiter`が未定義の場合は`defaultDelimiter`の値を採用)。
+
+分割のルールは以下になります。
+
+- 最初に見つかった区切り文字の直前までを`label`、以降を`value`とみなします(`value`に区切り文字を含めることができます)。
+- 区切り文字が存在しない場合は、行全体を`label`と`value`の両方に使用します。
+- `label`または`value`が空になる場合は、もう一方の値を代わりに使用します。
+- いずれも前後の空白は除去されます。
+
+区切り文字に`,`を指定した場合の例は以下になります。
+
+| 外部コマンドの出力   | QuickPickの表示 | inputsに渡される値 |
+| -------------------- | --------------- | ------------------ |
+| `staging,192.0.2.10` | `staging`       | `192.0.2.10`       |
+| `prod,192.0.2.20`    | `prod`          | `192.0.2.20`       |
+| `localhost`          | `localhost`     | `localhost`        |
+| `staging,`           | `staging`       | `staging`          |
 
 `args`の挙動は以下になります。
 
@@ -119,6 +146,7 @@ vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-co
 - コマンドの実行結果は`出力`-`Simple Command Launcher`に出力
 - `runCommand`コマンドに外部コマンド名を渡すと、コマンド一覧の選択を省略できる
 - 外部コマンドの実行結果(`STDOUT`)を`tasks.json`の`inputs`(変数)として利用できる
+- `inputsForTasks`では実行結果の各行を`label|value`形式で定義でき、選択した`value`をタスクに渡せる
 
 ## Requirements
 
@@ -135,6 +163,7 @@ vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-co
 | name               | 不可     | -            | 外部コマンド名。 `Simple Command Launcher`の`Run`コマンド実行時の選択項目になる。                                                                                                              |
 | path               | 不可     | -            | 外部コマンドのパス。`/bin/sh`により実行されるコマンドのパス                                                                                                                                    |
 | executionType      | 可       | run          | `run`(外部コマンドを実行), `pickAndCode`(外部コマンドの実行結果をQuickPickで選択し、VsCodeで開く), `pickAndOpen`(外部コマンドの実行結果をQuickPickで選択し、Openで開く), `inputsForTasks`(外部コマンドの実行結果をQuickPickで選択し、`tasks.json`の`inputs`に値を渡す) のいずれかを選択可能。 |
+| delimiter          | 可       | 設定の`defaultDelimiter` | `executionType`が`inputsForTasks`のときに、実行結果(`STDOUT`)の各行を`label`と`value`に分割する区切り文字。省略時は`simple-command-launcher.defaultDelimiter`の値を採用。 |
 | args               | 可       | []           | 外部コマンドに渡す**引数情報**の配列                                                                                                                                                           |
 
 **引数情報**に設定できる項目は以下になります。
@@ -156,6 +185,8 @@ vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-co
 `simple-command-launcher.openCommand`には、**open**コマンドのパスを指定します。デフォルト値は`/usr/bin/open`です。
 
 `simple-command-launcher.vscodeCommand`には、**code**コマンドのパスを指定します。デフォルト値は`/usr/local/bin/code`です。
+
+`simple-command-launcher.defaultDelimiter`には、`executionType`に`inputsForTasks`を指定した外部コマンドの実行結果(`STDOUT`)の各行を`label`と`value`に分割する、拡張機能共通の既定の区切り文字を指定します。デフォルト値は`|`です。
 
 ### 設定例
 
@@ -257,6 +288,8 @@ vscodeの`tasks.json`に定義する`inputs`(`type: command`)から、`simple-co
 
 - `runCommand`コマンドの引数に外部コマンド名(`name`)を指定可能に。指定時はコマンド一覧の選択を省略する。
 - `executionType`に`inputsForTasks`を追加し、外部コマンドの実行結果(`STDOUT`)の各行をQuickPickで選択して、`tasks.json`の`inputs`の値として利用可能に。
+- `inputsForTasks`の実行結果の各行に`label|value`形式をサポートし、表示する`label`とinputsに渡す`value`を分離できるようにした。
+- 行を分割する区切り文字として、拡張機能共通の`defaultDelimiter`(デフォルト`|`)と、コマンド情報で上書き可能な`delimiter`を追加した。
 
 ---
 

@@ -5,6 +5,8 @@ type Command = {
   path: string;
   executionType: ExecutionType;
   args: CmdArg[];
+  // 実行結果の行をlabelとvalueに分割する区切り文字(未定義の場合は設定の既定値を採用)
+  delimiter?: string;
 };
 
 type CmdArg = {
@@ -30,6 +32,11 @@ type PcikAndRunItem = {
   errMessage: string;
 };
 
+// 外部コマンドの実行結果の1行を表すQuickPickItem(inputsに渡す値を保持する)
+type CommandResultItem = vscode.QuickPickItem & {
+  value: string;
+};
+
 import * as util from "node:util";
 import { execFile } from "child_process";
 
@@ -39,6 +46,9 @@ import * as vscode from "vscode";
 
 // 拡張機能用出力チャンネル
 let commandOutputChannel: vscode.LogOutputChannel;
+
+// 実行結果の行をlabelとvalueに分割する既定の区切り文字(設定で上書き可能)
+const DEFAULT_ITEM_DELIMITER = "|";
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -272,7 +282,7 @@ async function executeCommand(
         }
         break;
       case "inputsForTasks":
-        return await pickTaskInput(stdout);
+        return await pickTaskInput(stdout, resolveItemDelimiter(selectedCmd));
       default:
         break;
     }
@@ -334,11 +344,14 @@ async function pickAndRun(
 
 // 外部コマンドの実行結果(STDOUT)の各行をQuickPickItemとして選択させ、
 // tasks.jsonのinputsに渡す値として返却する
-async function pickTaskInput(stdout: string): Promise<string | undefined> {
+async function pickTaskInput(
+  stdout: string,
+  delimiter: string
+): Promise<string | undefined> {
   const items = stdout
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
-    .map<vscode.QuickPickItem>((line) => ({ label: line }));
+    .map<CommandResultItem>((line) => parseItem(line, delimiter));
 
   if (items.length === 0) {
     const message =
@@ -359,6 +372,38 @@ async function pickTaskInput(stdout: string): Promise<string | undefined> {
     commandOutputChannel.append(message);
     return undefined;
   }
-  commandOutputChannel.append(`inputsに渡す値: ${selected.label}`);
-  return selected.label;
+  commandOutputChannel.append(`inputsに渡す値: ${selected.value}`);
+  return selected.value;
+}
+
+// 実行結果の1行(`label<区切り文字>value`)をQuickPickItemに変換する
+// 区切り文字が存在しない場合はlabelとvalueに同じ値を使用する
+function parseItem(line: string, delimiter: string): CommandResultItem {
+  const index = line.indexOf(delimiter);
+  const rawLabel = index < 0 ? line : line.slice(0, index);
+  const rawValue = index < 0 ? line : line.slice(index + delimiter.length);
+  const label = rawLabel.trim();
+  const value = rawValue.trim();
+
+  // どちらかが空の場合は、もう一方の値を代わりに使用する
+  const item: CommandResultItem = {
+    label: label.length > 0 ? label : value,
+    value: value.length > 0 ? value : label,
+  };
+  // 選択時にinputsへ渡される値が分かるようにvalueを説明として表示する
+  if (item.label !== item.value) {
+    item.description = item.value;
+  }
+  return item;
+}
+
+// 実行結果の行を分割する区切り文字を解決する
+// Commandに指定がない場合は、設定の既定の区切り文字を採用する
+function resolveItemDelimiter(selectedCmd: Command): string {
+  const config = vscode.workspace.getConfiguration("simple-command-launcher");
+  return (
+    selectedCmd.delimiter ||
+    config.get<string>("defaultDelimiter") ||
+    DEFAULT_ITEM_DELIMITER
+  );
 }

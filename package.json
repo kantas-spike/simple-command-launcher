@@ -37,6 +37,12 @@
           "title": "path of vscode command",
           "default": "/usr/local/bin/code"
         },
+        "simple-command-launcher.defaultDelimiter": {
+          "type": "string",
+          "title": "default delimiter of command result",
+          "description": "Default delimiter that splits each line of the command result (STDOUT) into `label` and `value` when `executionType` is `inputsForTasks`. Used when `delimiter` is not specified in the command.",
+          "default": "|"
+        },
         "simple-command-launcher.externalCommands": {
           "type": "array",
           "title": "External Commands",
@@ -68,6 +74,10 @@
                   "select the command result and open it with `open`",
                   "select the command result (STDOUT) and return it as `inputs` of tasks.json"
                 ]
+              },
+              "delimiter": {
+                "type": "string",
+                "description": "Delimiter that splits each line of the command result (STDOUT) into `label` and `value` when `executionType` is `inputsForTasks`. Defaults to the `defaultDelimiter` setting."
               },
               "args": {
                 "type": "array",
