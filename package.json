@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -46,6 +46,7 @@
         "simple-command-launcher.externalCommands": {
           "type": "array",
           "title": "External Commands",
+          "description": "External commands merged across scopes. Items defined in workspace settings are added to the user settings list, and items with the same `name` override the ones from user settings (workspace folder > workspace > user).",
           "items": {
             "type": "object",
             "title": "External Command",

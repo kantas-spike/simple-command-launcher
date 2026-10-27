@@ -188,6 +188,34 @@ QuickPickには`label`が表示され(`value`は説明文として併記され�
 
 `simple-command-launcher.defaultDelimiter`には、`executionType`に`inputsForTasks`を指定した外部コマンドの実行結果(`STDOUT`)の各行を`label`と`value`に分割する、拡張機能共通の既定の区切り文字を指定します。デフォルト値は`|`です。
 
+### 設定のスコープ(user/workspace)
+
+`simple-command-launcher.externalCommands`は、**ユーザー設定**・**ワークスペース設定**・**ワークスペースフォルダ設定**のいずれに定義しても、すべてマージされて利用できます。
+
+- マージの優先度は `ユーザー設定` < `ワークスペース設定` < `ワークスペースフォルダ設定` の順(後者が優先)です。
+- `name`が同一の項目がある場合は、優先度の高いスコープの項目で**丸ごと上書き**されます(`args`などを引き継ぎたい場合は、上書き側にも必要な項目を記述してください)。
+- `name`が異なる項目は追加として扱われ、QuickPickの一覧にはユーザー設定の並び順を維持したまま、ワークスペース専用のコマンドが末尾に追加されます。
+
+```json
+// settings.json (ユーザー設定)
+"simple-command-launcher.externalCommands": [
+  { "name": "deploy", "path": "/usr/local/bin/deploy", "args": [{ "value": "--staging" }] },
+  { "name": "logs", "path": "/usr/local/bin/logs" }
+]
+```
+
+```json
+// .vscode/settings.json (ワークスペース設定)
+"simple-command-launcher.externalCommands": [
+  // 同じnameの項目で上書きされる
+  { "name": "deploy", "path": "./scripts/deploy", "args": [{ "value": "--prod" }] },
+  // このワークスペース専用コマンドとして追加される
+  { "name": "db", "path": "./scripts/db" }
+]
+```
+
+上記の例でQuickPickに表示されるコマンド名は `deploy` / `logs` / `db` の3件で、`deploy` はワークスペース設定の内容が採用されます。
+
 ### 設定例
 
 ```json
@@ -290,6 +318,11 @@ QuickPickには`label`が表示され(`value`は説明文として併記され�
 - `executionType`に`inputsForTasks`を追加し、外部コマンドの実行結果(`STDOUT`)の各行をQuickPickで選択して、`tasks.json`の`inputs`の値として利用可能に。
 - `inputsForTasks`の実行結果の各行に`label|value`形式をサポートし、表示する`label`とinputsに渡す`value`を分離できるようにした。
 - 行を分割する区切り文字として、拡張機能共通の`defaultDelimiter`(デフォルト`|`)と、コマンド情報で上書き可能な`delimiter`を追加した。
+
+### 0.0.7
+
+- `externalCommands`をスコープ単位でマージするように変更。ユーザー設定に加えて、ワークスペース設定・ワークスペースフォルダ設定に定義した外部コマンドも利用可能に。
+- 同一の`name`を持つ項目は優先度の高いスコープ(`ワークスペースフォルダ設定` > `ワークスペース設定` > `ユーザー設定`)の項目で上書きされるようにした。
 
 ---
 

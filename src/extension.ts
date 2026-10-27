@@ -97,7 +97,7 @@ async function runCommand(
 ): Promise<string | undefined> {
   // 設定情報取得
   const config = vscode.workspace.getConfiguration("simple-command-launcher");
-  const commandList = config.get<Command[]>("externalCommands");
+  const commandList = loadExternalCommands();
   const openCommand = config.get<string>("openCommand");
   const vscodeCommand = config.get<string>("vscodeCommand");
 
@@ -152,6 +152,47 @@ async function runCommand(
   }
 
   return executeCommand(selectedCmd, args, pickAndXXMeta);
+}
+
+// 設定の各スコープ(user/workspace/workspace folder)からexternalCommandsを取得し、
+// 後のスコープが優先されるようにname単位でマージする
+// VS Code既定の配列の設定はスコープ単位で置き換えになるため、要素単位のマージは行えない
+function loadExternalCommands(): Command[] {
+  const inspected = vscode.workspace
+    .getConfiguration("simple-command-launcher")
+    .inspect<Command[]>("externalCommands");
+
+  // 優先度が低い(user)順に並べる
+  const scopedLists: (Command[] | undefined)[] = [
+    inspected?.globalValue,
+    inspected?.workspaceValue,
+  ];
+
+  // マルチルートワークスペースではフォルダごとに設定を持つため、folder分も追加する
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    scopedLists.push(
+      vscode.workspace
+        .getConfiguration("simple-command-launcher", folder.uri)
+        .inspect<Command[]>("externalCommands")?.workspaceFolderValue
+    );
+  }
+
+  return scopedLists.reduce<Command[]>(
+    (merged, list) => mergeCommands(merged, list),
+    []
+  );
+}
+
+// nameをキーに外部コマンドをマージする(同一nameの場合は後のスコープの項目で上書き)
+function mergeCommands(base: Command[], override?: Command[]): Command[] {
+  const merged = new Map<string, Command>();
+  for (const cmd of [...base, ...(override ?? [])]) {
+    if (!cmd?.name) {
+      continue;
+    }
+    merged.set(cmd.name, cmd);
+  }
+  return Array.from(merged.values());
 }
 
 // 実行する外部コマンドの名前を確定させる(未指定の場合はquickPickで選択させる)
