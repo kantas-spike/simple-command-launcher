@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -37,9 +37,16 @@
           "title": "path of vscode command",
           "default": "/usr/local/bin/code"
         },
+        "simple-command-launcher.defaultDelimiter": {
+          "type": "string",
+          "title": "default delimiter of command result",
+          "description": "Default delimiter that splits each line of the command result (STDOUT) into `label` and `value` when `executionType` is `inputsForTasks`. Used when `delimiter` is not specified in the command.",
+          "default": "|"
+        },
         "simple-command-launcher.externalCommands": {
           "type": "array",
           "title": "External Commands",
+          "description": "External commands merged across scopes. Items defined in workspace settings are added to the user settings list, and items with the same `name` override the ones from user settings (workspace folder > workspace > user).",
           "items": {
             "type": "object",
             "title": "External Command",
@@ -59,13 +66,19 @@
                 "enum": [
                   "run",
                   "pickAndCode",
-                  "pickAndOpen"
+                  "pickAndOpen",
+                  "inputsForTasks"
                 ],
                 "enumDescriptions": [
                   "just run the command",
                   "select the command result and open it with `code`",
-                  "select the command result and open it with `open`"
+                  "select the command result and open it with `open`",
+                  "select the command result (STDOUT) and return it as `inputs` of tasks.json"
                 ]
+              },
+              "delimiter": {
+                "type": "string",
+                "description": "Delimiter that splits each line of the command result (STDOUT) into `label` and `value` when `executionType` is `inputsForTasks`. Defaults to the `defaultDelimiter` setting."
               },
               "args": {
                 "type": "array",
