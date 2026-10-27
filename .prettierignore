@@ -1,0 +1,5 @@
+out
+dist
+*.vsix
+package-lock.json
+.vscode

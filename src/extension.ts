@@ -351,9 +351,7 @@ async function pickAndRun(
     throw Error(`不正なexecutionTypeが指定されました: ${executionType}`);
   }
 
-  const lines = stdout
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
+  const lines = stdout.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const selectedValue = await vscode.window.showQuickPick(lines, {
     canPickMany: false,
     title: item.pickTitle,
@@ -375,9 +373,13 @@ async function pickAndRun(
       const extraCmdLine = `${item.command} ${selectedValue}`;
       commandOutputChannel.append(extraCmdLine);
       if (err) {
-        vscode.window.showInformationMessage(`コマンド実行失敗: ${extraCmdLine}`);
+        vscode.window.showInformationMessage(
+          `コマンド実行失敗: ${extraCmdLine}`
+        );
       } else {
-        vscode.window.showInformationMessage(`コマンド実行成功:  ${extraCmdLine}`);
+        vscode.window.showInformationMessage(
+          `コマンド実行成功:  ${extraCmdLine}`
+        );
       }
     }
   );

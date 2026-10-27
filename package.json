@@ -131,6 +131,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "node ./out/test/runTest.js",
     "package": "npm run compile && npx vsce pack"
   },
@@ -145,6 +147,7 @@
     "eslint": "^8.50.0",
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
+    "prettier": "^3.3.3",
     "typescript": "^5.2.2"
   }
 }
