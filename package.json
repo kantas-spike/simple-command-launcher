@@ -2,7 +2,7 @@
   "name": "simple-command-launcher",
   "displayName": "simple-command-launcher",
   "description": "",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -93,7 +93,7 @@
                     },
                     "value": {
                       "type": "string",
-                      "description": "Value of Arg"
+                      "description": "Value of Arg. Predefined variables (currently `${workspaceFolder}` and `${workspaceFolderBasename}`) are expanded when the command is executed."
                     },
                     "useInput": {
                       "type": "boolean",
@@ -111,7 +111,7 @@
                           },
                           "value": {
                             "type": "string",
-                            "description": "Value of Choice"
+                            "description": "Value of Choice. Predefined variables (currently `${workspaceFolder}` and `${workspaceFolderBasename}`) are expanded when the command is executed."
                           }
                         }
                       }
@@ -147,7 +147,7 @@
     "eslint": "^8.50.0",
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
-    "prettier": "^3.3.3",
+    "prettier": "^3.9.10",
     "typescript": "^5.2.2"
   }
 }

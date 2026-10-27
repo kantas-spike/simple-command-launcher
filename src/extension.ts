@@ -38,6 +38,7 @@ type CommandResultItem = vscode.QuickPickItem & {
 };
 
 import * as util from "node:util";
+import * as path from "node:path";
 import { execFile } from "child_process";
 
 // The module 'vscode' contains the VS Code extensibility API
@@ -49,6 +50,9 @@ let commandOutputChannel: vscode.LogOutputChannel;
 
 // 実行結果の行をlabelとvalueに分割する既定の区切り文字(設定で上書き可能)
 const DEFAULT_ITEM_DELIMITER = "|";
+
+// 引数の値で展開可能な事前定義変数(`${workspaceFolder}`など)
+const VARIABLE_PATTERN = /\$\{(workspaceFolder|workspaceFolderBasename)\}/g;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -235,6 +239,8 @@ async function collectArgs(
   for (let i = 0; i < cmdArgs.length; i++) {
     const arg = cmdArgs[i];
     const argName = arg.name ? arg.name : `引数${i + 1}`;
+    // valueは設定上省略可能なため、未指定の場合は空文字列として扱う
+    const rawValue = arg.value ?? "";
     if (arg.useInput) {
       if (arg.choices) {
         const choiceMap = arg.choices.reduce(
@@ -265,25 +271,121 @@ async function collectArgs(
           );
           return undefined;
         } else {
-          args.push(value);
+          const expanded = expandArgumentValue(value);
+          if (expanded === undefined) {
+            return undefined;
+          }
+          args.push(toCommandArgument(expanded, expanded !== value));
         }
       } else {
+        // 初期値として事前定義変数を展開した値を表示する
+        const defaultValue = expandArgumentValue(rawValue);
+        if (defaultValue === undefined) {
+          return undefined;
+        }
         const input = await vscode.window.showInputBox({
           title: `${argName}`,
           prompt: `${argName}を入力してください:`,
-          value: arg.value,
+          value: defaultValue,
         });
         if (!input) {
           vscode.window.showWarningMessage(`${arg.name}を入力してください`);
           return undefined;
         }
-        args.push(`"${escapeQuote(input)}"`);
+        const expanded = expandArgumentValue(input);
+        if (expanded === undefined) {
+          return undefined;
+        }
+        args.push(`"${escapeQuote(expanded)}"`);
       }
     } else {
-      args.push(arg.value);
+      const expanded = expandArgumentValue(rawValue);
+      if (expanded === undefined) {
+        return undefined;
+      }
+      args.push(toCommandArgument(expanded, expanded !== rawValue));
     }
   }
   return args;
+}
+
+// 引数の値に含まれる事前定義変数を展開する
+// 解決できない事前定義変数が含まれる場合は警告してundefinedを返す
+function expandArgumentValue(value: string): string | undefined {
+  if (!value.includes("${")) {
+    return value;
+  }
+
+  const variables = collectPredefinedVariables();
+  const unresolved: string[] = [];
+  const expanded = value.replace(
+    VARIABLE_PATTERN,
+    (match: string, name: string) => {
+      const resolved = variables.get(name);
+      if (resolved === undefined) {
+        unresolved.push(name);
+        return match;
+      }
+      return resolved;
+    }
+  );
+
+  if (unresolved.length > 0) {
+    const names = Array.from(new Set(unresolved))
+      .map((name) => `\${${name}}`)
+      .join(", ");
+    showWarning(
+      `事前定義変数(${names})を解決できませんでした。ワークスペースが開かれているか確認してください。`
+    );
+    return undefined;
+  }
+  return expanded;
+}
+
+// 引数の値に展開可能な事前定義変数を格納する
+// ワークスペースフォルダは、アクティブなエディタが属するフォルダを優先し、
+// 取得できない場合は最初のワークスペースフォルダを採用する
+function collectPredefinedVariables(): Map<string, string> {
+  const variables = new Map<string, string>();
+  const folder = activeWorkspaceFolder();
+  if (folder) {
+    variables.set("workspaceFolder", folder.uri.fsPath);
+    variables.set("workspaceFolderBasename", path.basename(folder.uri.fsPath));
+  }
+  return variables;
+}
+
+// アクティブなエディタが属するワークスペースフォルダ(無ければ最初のワークスペースフォルダ)を返す
+function activeWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
+  const activeUri = vscode.window.activeTextEditor?.document.uri;
+  if (activeUri) {
+    const folder = vscode.workspace.getWorkspaceFolder(activeUri);
+    if (folder) {
+      return folder;
+    }
+  }
+  return vscode.workspace.workspaceFolders?.[0];
+}
+
+// 外部コマンドに渡す引数を生成する
+// 事前定義変数の展開によって空白を含む値になった場合は、シェルで1つの引数として
+// 扱われるようにクォートを付与する(設定側で既にクォートされている場合は付与しない)
+function toCommandArgument(value: string, expanded: boolean): string {
+  if (!expanded || !/\s/.test(value) || isQuoted(value)) {
+    return value;
+  }
+  return `"${escapeQuote(value)}"`;
+}
+
+// 値全体が同じ種のクォートで囲まれているかどうかを返す
+function isQuoted(value: string): boolean {
+  return /^".*"$/s.test(value) || /^'.*'$/s.test(value);
+}
+
+// 警告メッセージをトーストと出力チャンネルに表示する
+function showWarning(message: string): void {
+  vscode.window.showWarningMessage(message);
+  commandOutputChannel.append(message);
 }
 
 // 外部コマンドを実行し、executionTypeに応じて後続処理を行う
